@@ -11,10 +11,10 @@ def create_app():
     )
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 
-    # PostgreSQL for Vercel, SQLite fallback for local testing
+    # SQLite in /tmp for Vercel
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL',
-        'sqlite:///database.db'
+        'sqlite:////tmp/database.db'
     )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
