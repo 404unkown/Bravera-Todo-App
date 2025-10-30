@@ -29,4 +29,4 @@ def create_app():
     return app
 
 # Create app for Vercel
-app = create_app()
+app = create_app(
