@@ -1,7 +1,8 @@
 from web import create_app
-from mangum import Mangum  # wrap Flask for serverless
+from mangum import Mangum  # For serverless support on Vercel
 
+# Create Flask app
 app = create_app()
 
-# serverless handler for Vercel
+# Wrap Flask app for Vercel serverless function
 handler = Mangum(app)
