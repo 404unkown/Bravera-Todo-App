@@ -10,21 +10,25 @@ def create_app():
         static_folder=os.path.join(os.path.dirname(__file__), "static")
     )
 
+    # Secret key
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
+
+    # SQLite in /tmp for serverless
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL',
-        'sqlite:////tmp/database.db'  # Use /tmp on Vercel
+        'sqlite:////tmp/database.db'
     )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
 
+    # Blueprints
     from .views import views
     from .auth import auth
-
     app.register_blueprint(views)
     app.register_blueprint(auth, url_prefix='/auth')
 
+    # Login manager
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
     login_manager.init_app(app)
@@ -33,8 +37,11 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # Only create DB when app context is ready
+    # Create tables safely
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as e:
+            print("DB creation error:", e)
 
     return app
