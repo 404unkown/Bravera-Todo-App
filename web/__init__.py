@@ -1,41 +1,29 @@
-from flask import Flask
-from flask_login import LoginManager
-from web.models import db, User
 import os
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
 
 def create_app():
-    app = Flask(
-        __name__,
-        template_folder=os.path.join(os.path.dirname(__file__), "templates"),
-        static_folder=os.path.join(os.path.dirname(__file__), "static")
-    )
+    app = Flask(__name__)
 
-    # Use environment variables for Supabase and secret key
+    # Use environment variables for production (Vercel) or defaults for local
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL',
-        'sqlite:////tmp/database.db'
+        'sqlite:///tmp/database.db'  # fallback for local development
     )
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
-
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+    # Import views and auth after app creation
+    from . import views, auth
+    app.register_blueprint(auth.auth_bp)
+    app.register_blueprint(views.main_bp)
+
+    # Initialize the database
     db.init_app(app)
 
-    from .views import views
-    from .auth import auth
-
-    app.register_blueprint(views)
-    app.register_blueprint(auth, url_prefix='/auth')
-
-    login_manager = LoginManager()
-    login_manager.login_view = 'auth.login'
-    login_manager.init_app(app)
-
-    @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(int(user_id))
-
-    # Only create tables if they don't exist
+    # Create tables if they don't exist
     with app.app_context():
         db.create_all()
 
