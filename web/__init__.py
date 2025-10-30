@@ -2,6 +2,11 @@ from flask import Flask
 from flask_login import LoginManager
 from web.models import db, User
 import os
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def create_app():
     app = Flask(
@@ -9,11 +14,13 @@ def create_app():
         template_folder=os.path.join(os.path.dirname(__file__), "templates"),
         static_folder=os.path.join(os.path.dirname(__file__), "static")
     )
-
+    
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
+
+    # Use DATABASE_URL if provided, else fallback to /tmp for Vercel
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL',
-        'sqlite:////tmp/database.db'  # only temp storage on Vercel
+        'sqlite:////tmp/database.db'
     )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -25,25 +32,21 @@ def create_app():
     app.register_blueprint(views)
     app.register_blueprint(auth, url_prefix='/auth')
 
-    # Setup LoginManager
+    # Flask-Login setup
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
     login_manager.init_app(app)
 
     @login_manager.user_loader
     def load_user(user_id):
-        try:
-            return User.query.get(int(user_id))
-        except Exception:
-            return None
+        return User.query.get(int(user_id))
 
-    # Create database only once during cold start
-    if not os.path.exists('/tmp/database.db'):
+    # Create tables safely with logging
+    try:
         with app.app_context():
             db.create_all()
-
-    @app.route("/api/test")
-    def test():
-        return {"status": "App is running on Vercel"}
+            logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Database creation failed: {e}")
 
     return app
