@@ -9,32 +9,41 @@ def create_app():
         template_folder=os.path.join(os.path.dirname(__file__), "templates"),
         static_folder=os.path.join(os.path.dirname(__file__), "static")
     )
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 
-    # SQLite in /tmp for Vercel
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL',
-        'sqlite:////tmp/database.db'
+        'sqlite:////tmp/database.db'  # only temp storage on Vercel
     )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
 
+    # Register blueprints
     from .views import views
     from .auth import auth
-
     app.register_blueprint(views)
     app.register_blueprint(auth, url_prefix='/auth')
 
+    # Setup LoginManager
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
     login_manager.init_app(app)
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        try:
+            return User.query.get(int(user_id))
+        except Exception:
+            return None
 
-    with app.app_context():
-        db.create_all()
+    # Create database only once during cold start
+    if not os.path.exists('/tmp/database.db'):
+        with app.app_context():
+            db.create_all()
+
+    @app.route("/api/test")
+    def test():
+        return {"status": "App is running on Vercel"}
 
     return app
