@@ -14,10 +14,11 @@ def create_app():
 
     db.init_app(app)
 
-    # import your views here
+    # import your views/blueprints
     from . import views
     app.register_blueprint(views.bp)
 
     return app
 
+# Must expose `app` at module level
 app = create_app()
